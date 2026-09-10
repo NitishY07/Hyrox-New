@@ -622,20 +622,22 @@
 
             async function testApiKey() {
                 const apiKey = elements.apiKey.value.trim();
+                const idMeeting = elements.idMeeting.value.trim();
                 const apiBase = elements.apiBase.value.trim().replace(/\/$/, '');
 
                 if (!apiKey) { showError('API Key is required'); return; }
+                if (!idMeeting) { showError('Meeting ID is required to test API key'); return; }
 
                 hideError();
                 setStatus('loading', 'Testing API key...');
                 elements.testKeyBtn.disabled = true;
 
                 try {
-                    const url = `${apiBase}/ah/rest/appapi/meetinginfo/meeting/`;
+                    const url = `${apiBase}/ah/rest/appapi/meetinginfo/meeting/${encodeURIComponent(idMeeting)}`;
                     const auth = btoa(`apiVersion=1;apiKey=${apiKey}:`);
 
                     const response = await fetch(url, {
-                        method: 'HEAD',
+                        method: 'GET',
                         headers: {
                             'Authorization': `Basic ${auth}`,
                             'Accept': 'application/json'
@@ -643,20 +645,26 @@
                     });
 
                     if (response.status === 401) {
-                        throw new Error('401 Unauthorized: Invalid or unknown API key');
+                        const text = await response.text().catch(() => '');
+                        throw new Error('401 Unauthorized: Invalid or unknown API key' + (text ? ' — ' + text : ''));
                     }
                     if (response.status === 403) {
                         throw new Error('403 Forbidden: Key lacks meetinginfo-meeting permission');
                     }
                     if (response.status === 404) {
-                        setStatus('success', 'API Key valid ✓ (404 on base endpoint is expected)');
-                        return;
+                        throw new Error('404 Not Found: Meeting ID does not exist');
                     }
                     if (!response.ok) {
-                        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                        const text = await response.text().catch(() => '');
+                        throw new Error(`HTTP ${response.status}: ${response.statusText}` + (text ? ' — ' + text : ''));
                     }
 
-                    setStatus('success', 'API Key valid ✓');
+                    const data = await response.json();
+                    if (data && data.meeting) {
+                        setStatus('success', `API Key valid ✓ — Meeting: ${data.meeting.titleText || data.meeting.idMeeting}`);
+                    } else {
+                        setStatus('success', 'API Key valid ✓');
+                    }
 
                 } catch (err) {
                     console.error('Test key error:', err);
