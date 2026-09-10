@@ -363,9 +363,24 @@
                     <label for="apiKey">API Key</label>
                     <input type="password" id="apiKey" placeholder="sportvot-vhzj2id" value="sportvot-vhzj2id">
                 </div>
+                <div class="form-group" style="display: flex; align-items: flex-end;">
+                    <button class="btn btn-secondary" id="testKeyBtn" style="width: 100%;" title="Test API key against a lightweight endpoint">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M9 11l3 3L22 4"/>
+                            <path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/>
+                        </svg>
+                        Test API Key
+                    </button>
+                </div>
+            </div>
+            <div class="config-row">
                 <div class="form-group">
                     <label for="idMeeting">Meeting ID</label>
                     <input type="text" id="idMeeting" placeholder="99999905C9AF0700000004A8">
+                </div>
+                <div class="form-group">
+                    <label for="apiBase">API Base URL</label>
+                    <input type="url" id="apiBase" placeholder="https://apihub.mikatiming.net" value="https://apihub.mikatiming.net">
                 </div>
             </div>
             <div class="config-row">
@@ -412,6 +427,7 @@
                 idMeeting: document.getElementById('idMeeting'),
                 apiBase: document.getElementById('apiBase'),
                 fetchBtn: document.getElementById('fetchBtn'),
+                testKeyBtn: document.getElementById('testKeyBtn'),
                 meetingCard: document.getElementById('meetingCard'),
                 meetingTitle: document.getElementById('meetingTitle'),
                 meetingId: document.getElementById('meetingId'),
@@ -603,6 +619,54 @@
             }
 
             elements.fetchBtn.addEventListener('click', fetchMeeting);
+
+            async function testApiKey() {
+                const apiKey = elements.apiKey.value.trim();
+                const apiBase = elements.apiBase.value.trim().replace(/\/$/, '');
+
+                if (!apiKey) { showError('API Key is required'); return; }
+
+                hideError();
+                setStatus('loading', 'Testing API key...');
+                elements.testKeyBtn.disabled = true;
+
+                try {
+                    const url = `${apiBase}/ah/rest/appapi/meetinginfo/meeting/`;
+                    const auth = btoa(`apiVersion=1;apiKey=${apiKey}:`);
+
+                    const response = await fetch(url, {
+                        method: 'HEAD',
+                        headers: {
+                            'Authorization': `Basic ${auth}`,
+                            'Accept': 'application/json'
+                        }
+                    });
+
+                    if (response.status === 401) {
+                        throw new Error('401 Unauthorized: Invalid or unknown API key');
+                    }
+                    if (response.status === 403) {
+                        throw new Error('403 Forbidden: Key lacks meetinginfo-meeting permission');
+                    }
+                    if (response.status === 404) {
+                        setStatus('success', 'API Key valid ✓ (404 on base endpoint is expected)');
+                        return;
+                    }
+                    if (!response.ok) {
+                        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                    }
+
+                    setStatus('success', 'API Key valid ✓');
+
+                } catch (err) {
+                    console.error('Test key error:', err);
+                    showError(err.message);
+                } finally {
+                    elements.testKeyBtn.disabled = false;
+                }
+            }
+
+            elements.testKeyBtn.addEventListener('click', testApiKey);
 
             [elements.apiKey, elements.idMeeting, elements.apiBase].forEach(el => {
                 el.addEventListener('keydown', (e) => {
