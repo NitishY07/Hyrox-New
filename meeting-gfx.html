@@ -1,0 +1,619 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Meeting GFX - mika:timing</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --bg-primary: #0d1117;
+            --bg-secondary: #161b22;
+            --bg-tertiary: #21262d;
+            --text-primary: #f0f6fc;
+            --text-secondary: #8b949e;
+            --accent: #58a6ff;
+            --accent-hover: #79b8ff;
+            --border: #30363d;
+            --success: #3fb950;
+            --error: #f85149;
+            --warning: #d29922;
+            --font-mono: 'JetBrains Mono', 'Fira Code', Consolas, monospace;
+            --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+        }
+
+        body {
+            font-family: var(--font-sans);
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 2rem;
+            line-height: 1.6;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 900px;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 2rem;
+            padding-bottom: 1.5rem;
+            border-bottom: 1px solid var(--border);
+        }
+
+        h1 {
+            font-size: 1.75rem;
+            font-weight: 600;
+            letter-spacing: -0.02em;
+            margin-bottom: 0.5rem;
+        }
+
+        .subtitle {
+            color: var(--text-secondary);
+            font-size: 0.95rem;
+        }
+
+        .status-bar {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 0.75rem 1rem;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            margin-bottom: 1.5rem;
+            font-size: 0.875rem;
+        }
+
+        .status-indicator {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            transition: background 0.3s ease;
+        }
+
+        .status-indicator.loading { background: var(--warning); }
+        .status-indicator.success { background: var(--success); }
+        .status-indicator.error { background: var(--error); }
+
+        .status-text {
+            flex: 1;
+            font-family: var(--font-mono);
+            font-size: 0.8rem;
+        }
+
+        .config-panel {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .config-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .config-row:last-child { margin-bottom: 0; }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 0.375rem;
+        }
+
+        label {
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--text-secondary);
+        }
+
+        input, select {
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 0.625rem 0.875rem;
+            color: var(--text-primary);
+            font-family: var(--font-mono);
+            font-size: 0.875rem;
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+
+        input:focus, select:focus {
+            outline: none;
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px rgba(88, 166, 255, 0.15);
+        }
+
+        input::placeholder {
+            color: var(--text-secondary);
+            opacity: 0.6;
+        }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            padding: 0.625rem 1.25rem;
+            border: none;
+            border-radius: 6px;
+            font-family: var(--font-sans);
+            font-size: 0.875rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .btn-primary {
+            background: var(--accent);
+            color: #0d1117;
+        }
+
+        .btn-primary:hover:not(:disabled) {
+            background: var(--accent-hover);
+        }
+
+        .btn-primary:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .btn-secondary {
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
+            border: 1px solid var(--border);
+        }
+
+        .btn-secondary:hover:not(:disabled) {
+            background: var(--border);
+        }
+
+        .meeting-card {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            overflow: hidden;
+            display: none;
+        }
+
+        .meeting-card.visible { display: block; }
+
+        .card-header {
+            background: var(--bg-tertiary);
+            padding: 1rem 1.5rem;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 1rem;
+            flex-wrap: wrap;
+        }
+
+        .meeting-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+        }
+
+        .meeting-id {
+            font-family: var(--font-mono);
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            background: var(--bg-primary);
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
+        }
+
+        .fields-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 1rem;
+            padding: 1.5rem;
+        }
+
+        .field {
+            display: flex;
+            flex-direction: column;
+            gap: 0.25rem;
+        }
+
+        .field.full-width {
+            grid-column: 1 / -1;
+        }
+
+        .field-label {
+            font-size: 0.7rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--text-secondary);
+        }
+
+        .field-value {
+            font-family: var(--font-mono);
+            font-size: 0.875rem;
+            color: var(--text-primary);
+            background: var(--bg-tertiary);
+            padding: 0.5rem 0.75rem;
+            border-radius: 6px;
+            border: 1px solid var(--border);
+            word-break: break-all;
+        }
+
+        .field-value.empty {
+            color: var(--text-secondary);
+            font-style: italic;
+        }
+
+        .timestamp-display {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+        }
+
+        .timestamp-human {
+            font-family: var(--font-sans);
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+            background: transparent;
+            padding: 0;
+        }
+
+        .error-banner {
+            display: none;
+            background: rgba(248, 81, 73, 0.15);
+            border: 1px solid var(--error);
+            border-radius: 8px;
+            padding: 1rem 1.25rem;
+            margin-bottom: 1.5rem;
+            color: #ffa198;
+        }
+
+        .error-banner.visible { display: block; }
+
+        .error-banner h4 {
+            font-size: 0.875rem;
+            margin-bottom: 0.375rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .error-banner p {
+            font-size: 0.8rem;
+            font-family: var(--font-mono);
+        }
+
+        .raw-json {
+            margin-top: 1.5rem;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            overflow: hidden;
+        }
+
+        .raw-json summary {
+            padding: 1rem 1.5rem;
+            cursor: pointer;
+            font-size: 0.875rem;
+            font-weight: 500;
+            color: var(--text-secondary);
+            user-select: none;
+        }
+
+        .raw-json pre {
+            padding: 0 1.5rem 1.5rem;
+            margin: 0;
+            overflow-x: auto;
+            font-family: var(--font-mono);
+            font-size: 0.75rem;
+            line-height: 1.7;
+            color: var(--text-primary);
+        }
+
+        .json-key { color: #79b8ff; }
+        .json-string { color: #a5d6ff; }
+        .json-number { color: #79c0ff; }
+        .json-boolean { color: #ffa657; }
+        .json-null { color: #8b949e; }
+
+        @media (max-width: 600px) {
+            .config-row { grid-template-columns: 1fr; }
+            .fields-grid { grid-template-columns: 1fr; }
+            body { padding: 1rem; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Meeting Information GFX</h1>
+            <p class="subtitle">mika:timing API Integration</p>
+        </header>
+
+        <div class="status-bar" id="statusBar">
+            <div class="status-indicator" id="statusIndicator"></div>
+            <span class="status-text" id="statusText">Ready — Enter API Key and Meeting ID to fetch data</span>
+        </div>
+
+        <div class="error-banner" id="errorBanner">
+            <h4>⚠ Error</h4>
+            <p id="errorMessage"></p>
+        </div>
+
+        <div class="config-panel">
+            <div class="config-row">
+                <div class="form-group">
+                    <label for="apiKey">API Key</label>
+                    <input type="password" id="apiKey" placeholder="sportvot-vhzj2id" value="sportvot-vhzj2id">
+                </div>
+                <div class="form-group">
+                    <label for="idMeeting">Meeting ID</label>
+                    <input type="text" id="idMeeting" placeholder="99999905C9AF0700000004A8">
+                </div>
+            </div>
+            <div class="config-row">
+                <div class="form-group">
+                    <label for="apiBase">API Base URL</label>
+                    <input type="url" id="apiBase" placeholder="https://apihub.mikatiming.net" value="https://apihub.mikatiming.net">
+                </div>
+                <div class="form-group" style="display: flex; align-items: flex-end;">
+                    <button class="btn btn-primary" id="fetchBtn" style="width: 100%;">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                        </svg>
+                        Fetch Meeting
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <article class="meeting-card" id="meetingCard">
+            <div class="card-header">
+                <h2 class="meeting-title" id="meetingTitle">—</h2>
+                <span class="meeting-id" id="meetingId">—</span>
+            </div>
+            <div class="fields-grid" id="fieldsGrid"></div>
+        </article>
+
+        <details class="raw-json" id="rawJson">
+            <summary>Raw API Response (JSON)</summary>
+            <pre id="rawJsonContent"></pre>
+        </details>
+    </div>
+
+    <script>
+        (function() {
+            'use strict';
+
+            const elements = {
+                statusBar: document.getElementById('statusBar'),
+                statusIndicator: document.getElementById('statusIndicator'),
+                statusText: document.getElementById('statusText'),
+                errorBanner: document.getElementById('errorBanner'),
+                errorMessage: document.getElementById('errorMessage'),
+                apiKey: document.getElementById('apiKey'),
+                idMeeting: document.getElementById('idMeeting'),
+                apiBase: document.getElementById('apiBase'),
+                fetchBtn: document.getElementById('fetchBtn'),
+                meetingCard: document.getElementById('meetingCard'),
+                meetingTitle: document.getElementById('meetingTitle'),
+                meetingId: document.getElementById('meetingId'),
+                fieldsGrid: document.getElementById('fieldsGrid'),
+                rawJson: document.getElementById('rawJson'),
+                rawJsonContent: document.getElementById('rawJsonContent')
+            };
+
+            let abortController = null;
+
+            function setStatus(state, message) {
+                elements.statusIndicator.className = 'status-indicator ' + state;
+                elements.statusText.textContent = message;
+            }
+
+            function showError(message) {
+                elements.errorMessage.textContent = message;
+                elements.errorBanner.classList.add('visible');
+                setStatus('error', 'Error — ' + message);
+            }
+
+            function hideError() {
+                elements.errorBanner.classList.remove('visible');
+            }
+
+            function formatTimestamp(ms) {
+                if (!ms || typeof ms !== 'number') return '—';
+                const date = new Date(ms);
+                if (isNaN(date.getTime())) return '—';
+                return date.toLocaleString(undefined, {
+                    weekday: 'short',
+                    year: 'numeric',
+                    month: 'short',
+                    day: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    second: '2-digit',
+                    timeZoneName: 'short'
+                });
+            }
+
+            function formatDuration(ms) {
+                if (!ms || typeof ms !== 'number') return '—';
+                const seconds = Math.floor(ms / 1000);
+                const minutes = Math.floor(seconds / 60);
+                const hours = Math.floor(minutes / 60);
+                const days = Math.floor(hours / 24);
+
+                if (days > 0) return `${days}d ${hours % 24}h ${minutes % 60}m`;
+                if (hours > 0) return `${hours}h ${minutes % 60}m ${seconds % 60}s`;
+                if (minutes > 0) return `${minutes}m ${seconds % 60}s`;
+                return `${seconds}s`;
+            }
+
+            function createField(label, value, fullWidth = false) {
+                const div = document.createElement('div');
+                div.className = 'field' + (fullWidth ? ' full-width' : '');
+                div.innerHTML = `
+                    <span class="field-label">${label}</span>
+                    <span class="field-value ${value === '—' || value === '' ? 'empty' : ''}">${value}</span>
+                `;
+                return div;
+            }
+
+            function createTimestampField(label, ms) {
+                const div = document.createElement('div');
+                div.className = 'field';
+                const human = formatTimestamp(ms);
+                div.innerHTML = `
+                    <span class="field-label">${label}</span>
+                    <div class="timestamp-display">
+                        <span class="field-value">${ms || '—'}</span>
+                        <span class="timestamp-human">(${human})</span>
+                    </div>
+                `;
+                return div;
+            }
+
+            function populateMeeting(data) {
+                const meeting = data.meeting || data;
+                elements.fieldsGrid.innerHTML = '';
+
+                const title = meeting.titleText || meeting.title || meeting.name || 'Untitled Meeting';
+                const id = meeting.idMeeting || meeting.id || '—';
+
+                elements.meetingTitle.textContent = title;
+                elements.meetingId.textContent = id;
+
+                elements.fieldsGrid.appendChild(createTimestampField('Start Time (ms)', meeting.start));
+                elements.fieldsGrid.appendChild(createField('Meeting ID', id));
+                elements.fieldsGrid.appendChild(createField('Title', title));
+                elements.fieldsGrid.appendChild(createField('Status', meeting.status || meeting.state || '—'));
+                elements.fieldsGrid.appendChild(createField('Sport', meeting.sport || meeting.discipline || '—'));
+                elements.fieldsGrid.appendChild(createField('Category', meeting.category || meeting.type || '—'));
+                elements.fieldsGrid.appendChild(createField('Venue', meeting.venue || meeting.location || meeting.place || '—'));
+                elements.fieldsGrid.appendChild(createField('City', meeting.city || '—'));
+                elements.fieldsGrid.appendChild(createField('Country', meeting.country || meeting.nation || '—'));
+                elements.fieldsGrid.appendChild(createField('Organizer', meeting.organizer || meeting.organisation || '—'));
+                elements.fieldsGrid.appendChild(createField('Website', meeting.website || meeting.url || '—'));
+                elements.fieldsGrid.appendChild(createField('Timezone', meeting.timezone || meeting.tz || '—'));
+                elements.fieldsGrid.appendChild(createField('Currency', meeting.currency || '—'));
+                elements.fieldsGrid.appendChild(createField('Language', meeting.language || meeting.lang || '—'));
+                elements.fieldsGrid.appendChild(createField('External ID', meeting.externalId || meeting.extId || '—'));
+                elements.fieldsGrid.appendChild(createField('Season', meeting.season || meeting.year || '—'));
+                elements.fieldsGrid.appendChild(createField('Round', meeting.round || meeting.stage || '—'));
+                elements.fieldsGrid.appendChild(createField('Gender', meeting.gender || meeting.sex || '—'));
+                elements.fieldsGrid.appendChild(createField('Age Group', meeting.ageGroup || meeting.ageCategory || '—'));
+
+                if (meeting.description || meeting.info || meeting.notes) {
+                    elements.fieldsGrid.appendChild(createField('Description', meeting.description || meeting.info || meeting.notes, true));
+                }
+
+                elements.meetingCard.classList.add('visible');
+                elements.rawJson.style.display = 'block';
+            }
+
+            function syntaxHighlight(json) {
+                return json
+                    .replace(/&/g, '&')
+                    .replace(/</g, '<')
+                    .replace(/>/g, '>')
+                    .replace(/("(\\u[a-zA-Z0-9]{4}|\\[^u]|[^\\"])*"(\s*:)?|\b(true|false|null)\b|-?\d+(?:\.\d*)?(?:[eE][+\-]?\d+)?)/g, (match) => {
+                        let cls = 'json-number';
+                        if (/^"/.test(match)) {
+                            if (/:$/.test(match)) cls = 'json-key';
+                            else cls = 'json-string';
+                        } else if (/true|false/.test(match)) cls = 'json-boolean';
+                        else if (/null/.test(match)) cls = 'json-null';
+                        return '<span class="' + cls + '">' + match + '</span>';
+                    });
+            }
+
+            function showRawJson(data) {
+                const formatted = JSON.stringify(data, null, 2);
+                elements.rawJsonContent.innerHTML = syntaxHighlight(formatted);
+            }
+
+            async function fetchMeeting() {
+                const apiKey = elements.apiKey.value.trim();
+                const idMeeting = elements.idMeeting.value.trim();
+                const apiBase = elements.apiBase.value.trim().replace(/\/$/, '');
+
+                if (!apiKey) { showError('API Key is required'); return; }
+                if (!idMeeting) { showError('Meeting ID is required'); return; }
+
+                hideError();
+                setStatus('loading', 'Fetching meeting data...');
+                elements.fetchBtn.disabled = true;
+                elements.meetingCard.classList.remove('visible');
+
+                abortController = new AbortController();
+
+                try {
+                    const url = `${apiBase}/ah/rest/appapi/meetinginfo/meeting/${encodeURIComponent(idMeeting)}`;
+                    const auth = btoa(`apiVersion=1;apiKey=${apiKey}:`);
+
+                    const response = await fetch(url, {
+                        method: 'GET',
+                        headers: {
+                            'Authorization': `Basic ${auth}`,
+                            'Content-Type': 'application/json',
+                            'Accept': 'application/json'
+                        },
+                        signal: abortController.signal
+                    });
+
+                    if (!response.ok) {
+                        const errorText = await response.text().catch(() => '');
+                        throw new Error(`HTTP ${response.status}: ${response.statusText}${errorText ? ' — ' + errorText : ''}`);
+                    }
+
+                    const data = await response.json();
+
+                    if (!data || !data.meeting) {
+                        throw new Error('Invalid response format: missing "meeting" object');
+                    }
+
+                    populateMeeting(data);
+                    showRawJson(data);
+                    setStatus('success', `Loaded: ${data.meeting.titleText || data.meeting.idMeeting || 'Meeting'}`);
+
+                } catch (err) {
+                    if (err.name === 'AbortError') return;
+                    console.error('Fetch error:', err);
+                    showError(err.message);
+                } finally {
+                    elements.fetchBtn.disabled = false;
+                }
+            }
+
+            elements.fetchBtn.addEventListener('click', fetchMeeting);
+
+            [elements.apiKey, elements.idMeeting, elements.apiBase].forEach(el => {
+                el.addEventListener('keydown', (e) => {
+                    if (e.key === 'Enter') fetchMeeting();
+                });
+            });
+
+            elements.idMeeting.addEventListener('input', () => {
+                if (elements.errorBanner.classList.contains('visible')) hideError();
+            });
+        })();
+    </script>
+</body>
+</html>
